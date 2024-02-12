@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Namada Shielded Expedition</title>
+  <meta name="author" content="">
+  <link rel="icon" href="https://namada.net/assets/favicon-32x32.png">
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=<TODO::Google-API-KEY>&callback=initMap&loading=async&callback=initMap"
+    async defer>
+  </script>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #FFFF00;
+    }
+    #map {
+      height: 80%;
+      width: 80%;
+      border: 1px solid #000000;
+    }
+  </style>
+  <script>
+    let map;
+    let locations = [];
+
+    function initMap() {
+      var darkModeStyle = [
+        { elementType: 'labels.text.fill', stylers: [{ color: '#FFFFFF' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#000000' }] },
+        { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+        { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#FFFFFF' }] },
+        { featureType: 'landscape', stylers: [{ color: '#000000' }] },
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+        { featureType: 'road', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', stylers: [{ color: '#FFFFFF' }] },
+        { featureType: 'water', stylers: [{ color: '#FFFF00' }] }
+      ];
+
+      map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 3,
+        center: { lat: 50.1109, lng: 8.6821 }, // Frankfurt, Germany
+        styles: darkModeStyle
+      });
+
+      fetch('genesis_tm_address_to_alias.json')
+        .then(response => response.json())
+        .then(data => {
+          const entries = Object.values(data) //.slice(0, 5);
+          const fetchPromises = entries.map(entry => {
+            const netAddress = entry.net_address.split(':')[0];
+            return fetch(`https://ipinfo.io/${netAddress}?token=<TODO::IPINFO-API-TOKEN>`)
+              .then(response => response.json())
+              .then(location => {
+                if (location.loc) {
+                  const [lat, lng] = location.loc.split(',');
+                  return {
+                    lat: parseFloat(lat),
+                    lng: parseFloat(lng),
+                    alias: entry.alias
+                  };
+                } else {
+                  console.warn(`Location information for ${entry.alias} (${netAddress}) is not available.`);
+                  return null;
+                }
+              });
+          });
+
+          Promise.all(fetchPromises)
+            .then(results => {
+              results.filter(result => result !== null).forEach(location => {
+                new google.maps.Marker({
+                  position: { lat: location.lat, lng: location.lng },
+                  map: map,
+                  optimized: true,
+                  title: location.alias,
+                  icon: {
+                    path: 'm 12,2.4000002 c -2.7802903,0 -5.9650002,1.5099999 -5.9650002,5.8299998 0,1.74375 1.1549213,3.264465 2.3551945,4.025812 1.2002732,0.761348 2.4458987,0.763328 2.6273057,2.474813 L 12,24 12.9825,14.68 c 0.179732,-1.704939 1.425357,-1.665423 2.626049,-2.424188 C 16.809241,11.497047 17.965,9.94 17.965,8.23 17.965,3.9100001 14.78029,2.4000002 12,2.4000002 Z',
+                    fillColor: '#00FFFF',
+                    fillOpacity: 1,
+                    strokeColor: '#000000',
+                    strokeWeight: 0.75,
+                    scale: 1.5,
+                    anchor: new google.maps.Point(12, 24),
+                  },
+                });
+              });
+            })
+            .catch(error => console.error('Error with location data:', error));
+        })
+        .catch(error => console.error('Error fetching file:', error));
+    }
+  </script>
+</head>
+<body>
+  <div id="map"></div>
+</body>
+</html>
