@@ -12,10 +12,7 @@ The Namada community maintains a wide list of infrastructure services in the [na
 | - | - |
 | Validator	| `max-02`
 | RPC | https://namada-rpc.max-02.xyz
-| Indexer | https://namada-indexer.max-02.xyz:443
-| MASP Indexer | https://namada-masp.max-02.xyz
 | Seed | `tcp://1cb0c9813db48396b31976443a1cd88b73e0fb05@95.216.78.215:26656`
-| Peer | `tcp://4fc1398cb721afd3e73a00281b13d5fec0ce7566@138.201.221.23:26656`
 
 ## 🏠🔥 Testnet Services
 
