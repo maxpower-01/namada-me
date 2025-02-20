@@ -11,8 +11,8 @@ The Namada community maintains a wide list of infrastructure services in the [na
 | Service | Details and Parameters |
 | - | - |
 | Validator	| `max-02`
-| RPC | https://namada-rpc.max-02.xyz
-| Seed | `tcp://1cb0c9813db48396b31976443a1cd88b73e0fb05@95.216.78.215:26656`
+| RPC | https://rpc.namada.max-02.xyz
+| Peer | `tcp://94b60575033a7bb366101cb57ccb78073d97a446@95.216.78.215:26656`
 
 ## 🏠🔥 Testnet Services
 
@@ -21,8 +21,8 @@ The **Housefire Testnet** (also called housefire-alpaca) is a permanent testnet 
 | Service | Details and Parameters |
 | - | - |
 | Validator	| `max-03` |
-| RPC | https://housefire-rpc.max-03.xyz |
-| Indexer | https://housefire-indexer.max-03.xyz |
-| MASP Indexer | https://housefire-masp.max-03.xyz |
-| Namadillo	| https://housefire-namadillo.max-03.xyz |
+| RPC | https://rpc.housefire.max-03.xyz |
+| Indexer | https://indexer.housefire.max-03.xyz |
+| MASP Indexer | https://masp.housefire.max-03.xyz |
+| Namadillo	| https://namadillo.housefire.max-03.xyz |
 | Peer | `tcp://7e2069e6bf93a23b611ec9551d1a9427603f5792@88.99.67.38:26656` |
