@@ -12,6 +12,7 @@ The Namada community maintains a wide list of infrastructure services in the [na
 | - | - |
 | Validator	| `max-02`
 | RPC | https://rpc.namada.max-02.xyz
+| Namadillo	| https://namadillo.net |
 | Peer | `tcp://94b60575033a7bb366101cb57ccb78073d97a446@95.216.78.215:26656`
 
 ## 🏠🔥 Testnet Services
