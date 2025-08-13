@@ -1,0 +1,8 @@
+indexer_url = "https://namada-idx.emberstake.xyz"
+rpc_url = "https://namada-rpc.emberstake.xyz"
+masp_indexer_url = "https://namada-masp-idx.emberstake.xyz"
+fathom_site_id = "XYONBKYJ"
+
+#indexer_url = "https://indexer.namada.tududes.com:443"
+#rpc_url = "https://rpc.namada.tududes.com:443"
+#masp_indexer_url = "https://masp.namada.tududes.com:443"
