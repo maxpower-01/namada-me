@@ -1,7 +1,12 @@
-indexer_url = "https://namada-idx.emberstake.xyz"
-rpc_url = "https://namada-rpc.emberstake.xyz"
-masp_indexer_url = "https://namada-masp-idx.emberstake.xyz"
+indexer_url = "https://indexer.mainnet.siuuu.click"
+rpc_url = "https://rpc.mainnet.siuuu.click"
+masp_indexer_url = "https://masp.mainnet.siuuu.click"
 fathom_site_id = "XYONBKYJ"
+
+#indexer_url = "https://namada-idx.emberstake.xyz"
+#rpc_url = "https://namada-rpc.emberstake.xyz"
+#masp_indexer_url = "https://namada-masp-idx.emberstake.xyz"
+#fathom_site_id = "XYONBKYJ"
 
 #indexer_url = "https://indexer.namada.tududes.com:443"
 #rpc_url = "https://rpc.namada.tududes.com:443"
