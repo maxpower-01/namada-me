@@ -2,27 +2,29 @@
 # Namada Validator Governance & Uptime Overview
 #
 # Purpose:
-# - Validator identity, status (jailed/disabled), and voting power
-# - Governance participation across ALL known proposals
-# - Uptime since genesis (block signing rate)
+# - Validator identity, consensus state, and voting power
+# - Governance participation ONLY for proposal IDs >= 30
+# - Validator liveness (availability / signing %) for a defined post-p29 time window (namadata)
 # - PGF-166 participation marker (from GitHub CSV list)
 #
 # Data Sources:
 # - Validator metadata & governance votes: https://indexer.namada.net/api/v1
-# - Validator uptime (signed_percentage, from genesis): https://api.namada.valopers.com/validators/blocks_signing_stats
+# - Validator liveness aggregate (time-windowed): https://www.namadata.xyz/api/validator-liveness-aggregate
 # - CPGF-166 validator list: https://raw.githubusercontent.com/Luminara-Hub/govproposals/9f2f88579aa96572e5414b560cb1e96a92eb9169/cpgf_166-validators.csv
-#
 #
 # Notes:
 # - Governance participation is calculated ONLY for proposal IDs >= 30
-# - Voter address is taken directly from validator operator address
-# - If no uptime record exists, uptime displays as "n/a"
+# - Liveness is taken from namadata.xyz and reflects ONLY the configured time window
+# - If no liveness record exists, liveness displays as "n/a"
 # - Proposal columns are generated dynamically (p30, p31, ...)
 # 
 
 $IndexerBase   = "https://indexer.namada.net/api/v1"
-$UptimeBase    = "https://api.namada.valopers.com"
 $Cpgf166CsvUrl = "https://raw.githubusercontent.com/Luminara-Hub/govproposals/9f2f88579aa96572e5414b560cb1e96a92eb9169/cpgf_166-validators.csv"
+
+# Liveness (availability) API – time-windowed (post-p29)
+$LivenessUrl = "https://www.namadata.xyz/api/validator-liveness-aggregate?chain_id=namada-mainnet&start_date=2024-08-05T00%3A00%3A00Z&end_date=2025-12-09T23%3A59%3A59Z&page=1&limit=100&sort_by=liveness_percentage&sort_order=desc"
+$LivenessWindowLabel = "2024-08-05..2025-12-09"
 
 # Limit validators for testing; set to 0 for all validators
 $MaxValidators = 0
@@ -73,8 +75,6 @@ function Get-VoterVotes {
     $resp = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20 -ErrorAction SilentlyContinue
     if (-not $resp) { return @() }
 
-    # Response is already an array of objects:
-    # proposalId, vote, voterAddress
     return $resp
 }
 
@@ -96,19 +96,21 @@ function Get-ProposalIdFromVote {
     return $null
 }
 
-# ---------- Uptime / blocks_signing_stats ----------
-function Get-ValidatorUptimeMap {
-    # Returns: hashtable[tnam/nam-address] -> signed_percentage (double)
-    $url = "$UptimeBase/validators/blocks_signing_stats"
-    $resp = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20 -ErrorAction SilentlyContinue
+# ---------- Liveness / validator availability (namadata, time-windowed) ----------
+function Get-ValidatorLivenessMap {
+    # Returns: hashtable[address] -> liveness_percentage (double)
+    param(
+        [string]$Url
+    )
 
     $map = @{}
-    if (-not $resp) { return $map }
+    $resp = Invoke-RestMethod -Uri $Url -Method Get -TimeoutSec 30 -ErrorAction SilentlyContinue
+    if (-not $resp -or -not $resp.success) { return $map }
 
-    foreach ($item in $resp) {
-        $opAddr = $item.operator_address
-        if ($opAddr) {
-            $map[$opAddr] = [double]$item.signed_percentage
+    foreach ($item in $resp.data) {
+        $addr = $item.validator_address
+        if ($addr) {
+            $map[$addr] = [double]$item.liveness_percentage
         }
     }
 
@@ -130,17 +132,14 @@ function Get-Cpgf166Validators {
 
         # CSV format:
         # type,amount,address
-        # cpgf,30.1369863,tnam1q...
         $rows = $resp.Content | ConvertFrom-Csv
 
         foreach ($row in $rows) {
             $addr = $row.address
             if ($addr) {
                 $addr = $addr.Trim()
-                if ($addr -ne "") {
-                    if (-not $set.ContainsKey($addr)) {
-                        $set[$addr] = $true
-                    }
+                if ($addr -ne "" -and -not $set.ContainsKey($addr)) {
+                    $set[$addr] = $true
                 }
             }
         }
@@ -176,16 +175,14 @@ if (-not $addrField) {
 }
 
 $statusField       = ($propNames | Where-Object { $_ -in @("state","status","validatorStatus") })   | Select-Object -First 1
-$jailedField       = ($propNames | Where-Object { $_ -in @("jailed","is_jailed","isJailed") })       | Select-Object -First 1
-$disabledField     = ($propNames | Where-Object { $_ -in @("disabled","is_disabled","isDisabled") }) | Select-Object -First 1
 $nameField         = ($propNames | Where-Object { $_ -in @("name","moniker","validatorName","identity") }) | Select-Object -First 1
 $votingPowerField  = ($propNames | Where-Object { $_ -in @("votingPower","voting_power","voting_power_total","voting_power_int") }) | Select-Object -First 1
 
 # Use validator address directly as voter address
 $voterField = $addrField
 
-# Build uptime map once
-$uptimeMap = Get-ValidatorUptimeMap
+# Build liveness map once (time-windowed)
+$livenessMap = Get-ValidatorLivenessMap -Url $LivenessUrl
 
 # Build CPGF-166 validator address set once
 $cpgf166Set = Get-Cpgf166Validators -CsvUrl $Cpgf166CsvUrl
@@ -236,42 +233,31 @@ foreach ($v in $validators) {
     }
 
     # base info
-    $row["address"]   = $addr
+    $row["address"] = $addr
 
+    # consensus state
     $state = $null
-    $isJailed = $false
-    $disabled = $false
-
-    if ($statusField)   { $state = [string]$v.$statusField }
-    if ($jailedField)   { $isJailed = [bool]$v.$jailedField }
-    if ($disabledField) { $disabled = [bool]$v.$disabledField }
-
-    $row["state"]    = $state
+    if ($statusField) { $state = [string]$v.$statusField }
+    $row["state"] = $state
 
     if ($votingPowerField) { $row["votingPower"] = $v.$votingPowerField }
 
-    # ----- Uptime from blocks_signing_stats (signed_percentage) -----
-    $uptime = $null
-    if ($uptimeMap -and $uptimeMap.ContainsKey($addr)) {
-        $uptime = $uptimeMap[$addr]
+    # ----- Liveness from namadata.xyz (liveness_percentage) -----
+    $liveness = $null
+    if ($livenessMap -and $livenessMap.ContainsKey($addr)) {
+        $liveness = $livenessMap[$addr]
     }
 
-    $uptimeColumn = "uptimeSignedPct (from genesis)"
+    $livenessColumn = "livenessPct ($LivenessWindowLabel)"
 
-    $row[$uptimeColumn] = if ($uptime -ne $null) {
-        [math]::Round($uptime, 2)
+    $row[$livenessColumn] = if ($liveness -ne $null) {
+        [math]::Round($liveness, 2)
     } else {
         "n/a"
     }
 
     # ----- CPGF-166 participation flag -----
-    $inCpgf = $false
-    if ($cpgf166Set -and $addr -and $cpgf166Set.ContainsKey($addr)) {
-        $inCpgf = $true
-    }
-
-    # Column exactly as requested
-    $row["cpgf_166-validators"] = if ($inCpgf) { "yes" } else { "no" }
+    $row["cpgf_166-validators"] = if ($cpgf166Set -and $cpgf166Set.ContainsKey($addr)) { "yes" } else { "no" }
 
     # voting participation map for this validator
     $ids = $validatorVotes[$addr]
