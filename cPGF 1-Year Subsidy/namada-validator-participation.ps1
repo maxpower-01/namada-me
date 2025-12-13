@@ -14,9 +14,10 @@
 #
 #
 # Notes:
+# - Governance participation is calculated ONLY for proposal IDs >= 30
 # - Voter address is taken directly from validator operator address
 # - If no uptime record exists, uptime displays as "n/a"
-# - All proposal columns are dynamically generated (p<ID>)
+# - Proposal columns are generated dynamically (p30, p31, ...)
 # 
 
 $IndexerBase   = "https://indexer.namada.net/api/v1"
@@ -203,7 +204,7 @@ foreach ($v in $validators) {
     $ids =
         $votes |
         ForEach-Object { Get-ProposalIdFromVote $_ } |
-        Where-Object { $_ -ne $null } |
+        Where-Object { $_ -ne $null -and $_ -gt 29 } |
         Select-Object -Unique
 
     $validatorVotes[$addr] = $ids
@@ -216,7 +217,8 @@ foreach ($v in $validators) {
 }
 
 # Final, sorted list of proposal IDs (union of all)
-$proposalIds = $allProposalIds.Keys | Sort-Object
+# Only consider proposals AFTER proposal 29 (i.e., 30+)
+$proposalIds = $allProposalIds.Keys | Where-Object { [int]$_ -gt 29 } | Sort-Object
 
 $rows = @()
 
